@@ -9,12 +9,15 @@ interface ChatMessageProps {
 }
 
 const ChatMessage = ({ message, isUser, videoUrl }: ChatMessageProps) => {
+  // Always make messages with videos appear as user messages (blue bubble, right-aligned)
+  const isUserStyled = videoUrl ? true : isUser;
+  
   return (
-    <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
+    <div className={cn("flex", isUserStyled ? "justify-end" : "justify-start")}>
       <div
         className={cn(
           "max-w-[80%] rounded-2xl p-4",
-          isUser
+          isUserStyled
             ? "bg-blue-500 text-white rounded-br-none"
             : "bg-gray-200 text-gray-900 rounded-bl-none"
         )}
