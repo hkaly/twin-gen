@@ -1,27 +1,43 @@
 
-import { useState, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Card } from "@/components/ui/card";
+import { Send } from "lucide-react";
 import AvatarSelector from "@/components/AvatarSelector";
-import ScriptInput from "@/components/ScriptInput";
 import VideoPlayer from "@/components/VideoPlayer";
 import { heygenService } from "@/services/heygenService";
-import { Avatar, VideoResponse } from "@/types/avatar";
+import { Avatar as AvatarType, VideoResponse } from "@/types/avatar";
 import { toast } from "sonner";
-import { Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
+import ChatMessage from "@/components/ChatMessage";
 
 const Index = () => {
-  const [avatars, setAvatars] = useState<Avatar[]>([]);
-  const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null);
-  const [script, setScript] = useState("");
+  const [avatars, setAvatars] = useState<AvatarType[]>([]);
+  const [selectedAvatar, setSelectedAvatar] = useState<AvatarType | null>(null);
+  const [messages, setMessages] = useState<Array<{text: string; isUser: boolean; videoUrl?: string}>>([
+    { text: "Hey, how's it going?", isUser: false },
+    { text: "Just finished a meeting. What's up?", isUser: true },
+    { text: "Want to grab lunch later?", isUser: false },
+  ]);
+  const [currentMessage, setCurrentMessage] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [videoId, setVideoId] = useState<string | null>(null);
   const [videoData, setVideoData] = useState<VideoResponse | null>(null);
+  const [showAvatarSelector, setShowAvatarSelector] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Load avatars
     const availableAvatars = heygenService.getAvatars();
     setAvatars(availableAvatars);
   }, []);
+
+  useEffect(() => {
+    // Scroll to bottom whenever messages change
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   useEffect(() => {
     // Poll for video status when videoId changes
@@ -34,7 +50,18 @@ const Index = () => {
         
         if (status.status === "completed") {
           setIsGenerating(false);
-          toast.success("Your video is ready to play!");
+          toast.success("Video response ready!");
+          
+          // Add the AI response with video URL to messages
+          setMessages(prev => [...prev, {
+            text: currentMessage,
+            isUser: false,
+            videoUrl: status.url
+          }]);
+          
+          setShowAvatarSelector(false);
+          setSelectedAvatar(null);
+          setCurrentMessage("");
         } else if (status.status === "failed") {
           setIsGenerating(false);
           toast.error("Video generation failed. Please try again.");
@@ -51,86 +78,99 @@ const Index = () => {
     if (videoId && isGenerating) {
       checkVideoStatus();
     }
-  }, [videoId]);
+  }, [videoId, currentMessage]);
 
-  const handleSelectAvatar = (avatar: Avatar) => {
-    setSelectedAvatar(avatar);
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!currentMessage.trim()) return;
+    
+    // Add user message
+    setMessages(prev => [...prev, { text: currentMessage, isUser: true }]);
+    
+    // Show avatar selector
+    setShowAvatarSelector(true);
   };
 
-  const handleGenerateVideo = async () => {
-    if (!selectedAvatar) {
-      toast.error("Please select an avatar first");
-      return;
-    }
+  const handleSelectAvatar = (avatar: AvatarType) => {
+    setSelectedAvatar(avatar);
+    handleGenerateVideo(avatar);
+  };
 
-    if (!script.trim()) {
-      toast.error("Please enter a script for your avatar");
-      return;
-    }
-
+  const handleGenerateVideo = async (avatar: AvatarType) => {
     try {
       setIsGenerating(true);
       const id = await heygenService.generateVideo({
-        avatarId: selectedAvatar.avatarId,
-        voiceId: selectedAvatar.voiceId,
-        script
+        avatarId: avatar.avatarId,
+        voiceId: avatar.voiceId,
+        script: currentMessage
       });
       
       setVideoId(id);
+      toast.info("Generating video response...");
     } catch (error) {
       setIsGenerating(false);
+      toast.error("Error generating video");
       console.error("Error generating video:", error);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-            <Sparkles className="h-6 w-6 mr-2 text-primary" />
-            HeyGen Video Creator
-          </h1>
-        </div>
+    <div className="flex flex-col h-screen bg-gray-100">
+      <header className="bg-white border-b border-gray-200 p-4">
+        <h1 className="text-3xl font-bold">Messaging Demo</h1>
       </header>
       
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-5xl mx-auto space-y-10">
-          <AvatarSelector 
-            avatars={avatars}
-            selectedAvatarId={selectedAvatar?.id || null}
-            onSelectAvatar={handleSelectAvatar}
-          />
-          
-          <ScriptInput 
-            value={script}
-            onChange={setScript}
-            disabled={isGenerating}
-          />
-          
-          <div className="flex justify-center">
+      <main className="flex-1 overflow-hidden flex flex-col p-4">
+        <div className="flex-1 overflow-y-auto pb-4 space-y-4">
+          {messages.map((message, index) => (
+            <ChatMessage 
+              key={index}
+              message={message.text}
+              isUser={message.isUser}
+              videoUrl={message.videoUrl}
+            />
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+        
+        {showAvatarSelector && !isGenerating && !videoData && (
+          <div className="mb-4">
+            <h2 className="text-lg font-medium mb-2">Choose an avatar to respond:</h2>
+            <AvatarSelector 
+              avatars={avatars}
+              selectedAvatarId={selectedAvatar?.id || null}
+              onSelectAvatar={handleSelectAvatar}
+            />
+          </div>
+        )}
+        
+        {isGenerating && (
+          <Card className="p-4 mb-4 text-center">
+            <p className="text-gray-600">Generating video response...</p>
+          </Card>
+        )}
+        
+        <form onSubmit={handleSendMessage} className="mt-auto relative">
+          <div className="relative flex items-center">
+            <Input
+              className="pr-12 py-6 text-base"
+              placeholder="Type a message..."
+              value={currentMessage}
+              onChange={(e) => setCurrentMessage(e.target.value)}
+              disabled={isGenerating || showAvatarSelector}
+            />
             <Button 
-              onClick={handleGenerateVideo}
-              disabled={isGenerating || !selectedAvatar || !script.trim()}
-              className="generate-btn px-8 py-6 text-lg"
-              size="lg"
+              type="submit" 
+              size="icon" 
+              className="absolute right-1 h-10 w-10 rounded-full"
+              disabled={!currentMessage.trim() || isGenerating || showAvatarSelector}
             >
-              {isGenerating ? "Generating..." : "Generate Video"}
+              <Send className="h-5 w-5" />
             </Button>
           </div>
-          
-          <VideoPlayer 
-            videoUrl={videoData?.url || null}
-            isLoading={isGenerating}
-          />
-        </div>
+        </form>
       </main>
-      
-      <footer className="border-t border-gray-200 mt-16">
-        <div className="container mx-auto px-4 py-6 text-center text-sm text-gray-500">
-          &copy; {new Date().getFullYear()} HeyGen Video Creator - Built with React and Tailwind CSS
-        </div>
-      </footer>
     </div>
   );
 };

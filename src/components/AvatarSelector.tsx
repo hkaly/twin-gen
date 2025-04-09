@@ -1,8 +1,8 @@
 
-import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Avatar as AvatarType } from "@/types/avatar";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface AvatarSelectorProps {
   avatars: AvatarType[];
@@ -13,22 +13,21 @@ interface AvatarSelectorProps {
 const AvatarSelector = ({ avatars, selectedAvatarId, onSelectAvatar }: AvatarSelectorProps) => {
   return (
     <div className="w-full">
-      <h2 className="text-2xl font-semibold mb-4">Choose an Avatar</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-3 gap-4">
         {avatars.map((avatar) => (
           <Card 
             key={avatar.id}
             className={cn(
-              "avatar-option overflow-hidden h-64 bg-muted flex justify-center items-center",
-              selectedAvatarId === avatar.id ? "selected" : ""
+              "avatar-option overflow-hidden cursor-pointer p-4 flex flex-col items-center justify-center",
+              selectedAvatarId === avatar.id ? "ring-2 ring-primary" : ""
             )}
             onClick={() => onSelectAvatar(avatar)}
           >
-            {/* In a real app, we would use real images */}
-            <div className="w-full h-full bg-gradient-to-b from-primary/20 to-primary/40 flex items-center justify-center">
-              <span className="text-4xl font-bold text-gray-500">{avatar.name}</span>
-            </div>
-            <div className="avatar-name">{avatar.name}</div>
+            <Avatar className="h-16 w-16 mb-2">
+              <AvatarImage src={avatar.image} alt={avatar.name} />
+              <AvatarFallback>{avatar.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div className="text-center font-medium">{avatar.name}</div>
           </Card>
         ))}
       </div>
