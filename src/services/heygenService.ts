@@ -114,4 +114,4 @@ class HeyGenService {
   }
 }
 
-export const heygenService = new HeygenService();
+export const heygenService = new HeyGenService();
