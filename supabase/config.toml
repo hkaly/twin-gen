@@ -3,3 +3,9 @@ project_id = "jkvceqitkmzmcrdsoeha"
 
 [functions.heygen]
 verify_jwt = true
+
+[functions.heygen-status]
+verify_jwt = true
+
+[functions.heygen-webhook]
+verify_jwt = false

@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 class HeyGenService {
   // In a real application, this would be fetched from your backend
   private apiUrl = "https://jkvceqitkmzmcrdsoeha.supabase.co/functions/v1/heygen";
+  private statusUrl = "https://api.heygen.com/v1/video_status";
+  private pollInterval = 5000; // 5 seconds
   
   // For demo purposes, we're hardcoding the avatars
   private avatars: Avatar[] = [
@@ -94,29 +96,82 @@ class HeyGenService {
 
   async getVideoStatus(videoId: string): Promise<VideoResponse> {
     try {
-      // In a real implementation, this would call the HeyGen API to check status
       console.log("Checking status for video:", videoId);
       
-      // For demo purposes, simulate a delay and return a completed status
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Call our Supabase Edge Function to check status
+      const { data, error } = await supabase.functions.invoke('heygen-status', {
+        body: { video_id: videoId }
+      });
+
+      if (error) {
+        console.error("Error checking video status:", error);
+        throw error;
+      }
+
+      // If we don't have a real implementation yet, use mock data
+      if (!data || process.env.NODE_ENV === 'development') {
+        // For demo purposes, simulate a delay and return a completed status
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        return {
+          id: videoId,
+          url: "https://storage.googleapis.com/heygen-demo-videos/sample_video.mp4",
+          status: "completed",
+          createdAt: new Date().toISOString()
+        };
+      }
       
       return {
         id: videoId,
-        url: "https://storage.googleapis.com/heygen-demo-videos/sample_video.mp4",
-        status: "completed",
+        url: data.video_url || null,
+        status: data.status || "processing",
         createdAt: new Date().toISOString()
       };
-      
-      // In a real implementation, you would make another API call:
-      // const { data, error } = await supabase.functions.invoke('heygen-status', {
-      //   body: { video_id: videoId }
-      // });
-      // return data;
     } catch (error) {
       console.error("Error checking video status:", error);
       toast.error("Failed to check video status");
       throw error;
     }
+  }
+
+  // Poll for video status until it's completed or fails
+  async pollVideoStatus(videoId: string, 
+    onUpdate: (status: VideoResponse) => void, 
+    maxAttempts = 60): Promise<VideoResponse | null> {
+    
+    let attempts = 0;
+    
+    const poll = async (): Promise<VideoResponse | null> => {
+      if (attempts >= maxAttempts) {
+        toast.error("Video generation timed out. Please try again.");
+        return null;
+      }
+      
+      try {
+        const status = await this.getVideoStatus(videoId);
+        onUpdate(status);
+        
+        if (status.status === "completed") {
+          toast.success("Video generation completed!");
+          return status;
+        } else if (status.status === "failed") {
+          toast.error("Video generation failed. Please try again.");
+          return status;
+        } else {
+          // Continue polling
+          attempts++;
+          await new Promise(resolve => setTimeout(resolve, this.pollInterval));
+          return poll();
+        }
+      } catch (error) {
+        console.error("Error polling video status:", error);
+        attempts++;
+        await new Promise(resolve => setTimeout(resolve, this.pollInterval));
+        return poll();
+      }
+    };
+    
+    return poll();
   }
 }
 

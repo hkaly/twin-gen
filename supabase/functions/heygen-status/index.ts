@@ -35,66 +35,40 @@ Deno.serve(async (req) => {
     );
   }
   
-  const url = 'https://api.heygen.com/v2/video/generate';
-
   try {
     const requestBody = await req.json();
-    console.log("Request to HeyGen API:", JSON.stringify(requestBody));
+    const videoId = requestBody.video_id;
     
-    // Ensure the request has proper dimension format if not already provided
-    if (!requestBody.dimension) {
-      requestBody.dimension = {
-        width: 1280,
-        height: 720
-      };
+    if (!videoId) {
+      return new Response(JSON.stringify({
+        error: "Missing video_id parameter"
+      }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        },
+        status: 400
+      });
     }
     
-    // Add caption field if not already provided
-    if (requestBody.caption === undefined) {
-      requestBody.caption = false;
-    }
+    console.log("Checking status for video:", videoId);
     
-    // Make sure video_inputs is properly formatted if text is passed
-    if (requestBody.video_inputs === undefined && requestBody.text) {
-      requestBody.video_inputs = [
-        {
-          text: requestBody.text
-        }
-      ];
-      // Remove the original text property as it's now in video_inputs
-      delete requestBody.text;
-    }
-
-    // Add webhook URL if not already provided
-    if (!requestBody.webhook_url) {
-      // Get the base URL of this function to construct webhook URL
-      const isProduction = !req.url.includes('localhost');
-      const baseURL = isProduction 
-        ? 'https://jkvceqitkmzmcrdsoeha.supabase.co/functions/v1'
-        : 'http://localhost:54321/functions/v1';
-      
-      requestBody.webhook_url = `${baseURL}/heygen-webhook`;
-    }
-
-    console.log("Using API key:", apiKey.substring(0, 5) + "..." + apiKey.substring(apiKey.length - 5));
-    console.log("Using webhook URL:", requestBody.webhook_url);
-
+    const url = `https://api.heygen.com/v1/video_status?video_id=${videoId}`;
+    
     const response = await fetch(url, {
-      method: 'POST',
+      method: 'GET',
       headers: {
         'accept': 'application/json',
-        'content-type': 'application/json',
         'x-api-key': apiKey
-      },
-      body: JSON.stringify(requestBody)
+      }
     });
 
     const data = await response.json();
-    console.log("Response from HeyGen API:", JSON.stringify(data));
+    console.log("Response from HeyGen status API:", JSON.stringify(data));
     
     if (!response.ok) {
       return new Response(JSON.stringify({
-        error: data.error || "Error calling HeyGen API",
+        error: data.error || "Error checking video status",
         status: response.status,
         statusText: response.statusText
       }), {
@@ -111,10 +85,10 @@ Deno.serve(async (req) => {
         ...corsHeaders,
         'Content-Type': 'application/json'
       },
-      status: response.status
+      status: 200
     });
   } catch (error) {
-    console.error("Error calling HeyGen API:", error);
+    console.error("Error checking video status:", error);
     return new Response(JSON.stringify({
       error: error.message
     }), {

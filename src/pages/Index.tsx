@@ -40,45 +40,51 @@ const Index = () => {
   }, [messages]);
 
   useEffect(() => {
-    // Poll for video status when videoId changes
-    const checkVideoStatus = async () => {
-      if (!videoId) return;
+    // Handle video generation when videoId changes
+    const startVideoPolling = async () => {
+      if (!videoId || !isGenerating) return;
       
       try {
-        const status = await heygenService.getVideoStatus(videoId);
-        setVideoData(status);
+        // Add a placeholder message for the pending video
+        const pendingMessageIndex = messages.length;
+        setMessages(prev => [...prev, {
+          text: currentMessage,
+          isUser: false,
+          videoUrl: undefined // No URL yet, video is processing
+        }]);
         
-        if (status.status === "completed") {
-          setIsGenerating(false);
-          toast.success("Video response ready!");
-          
-          // Add the AI response with video URL to messages
-          setMessages(prev => [...prev, {
-            text: currentMessage,
-            isUser: false,
-            videoUrl: status.url
-          }]);
-          
-          setShowAvatarSelector(false);
-          setSelectedAvatar(null);
-          setCurrentMessage("");
-        } else if (status.status === "failed") {
-          setIsGenerating(false);
-          toast.error("Video generation failed. Please try again.");
-        } else {
-          // Continue polling
-          setTimeout(checkVideoStatus, 2000);
-        }
+        // Start polling for video status
+        await heygenService.pollVideoStatus(
+          videoId,
+          (status) => {
+            setVideoData(status);
+            
+            // Update the message with video URL when completed
+            if (status.status === "completed" && status.url) {
+              setMessages(prev => {
+                const updated = [...prev];
+                updated[pendingMessageIndex] = {
+                  ...updated[pendingMessageIndex],
+                  videoUrl: status.url
+                };
+                return updated;
+              });
+              
+              setIsGenerating(false);
+              setShowAvatarSelector(false);
+              setSelectedAvatar(null);
+              setCurrentMessage("");
+            }
+          }
+        );
       } catch (error) {
-        console.error("Error checking video status:", error);
+        console.error("Error polling video status:", error);
         setIsGenerating(false);
       }
     };
 
-    if (videoId && isGenerating) {
-      checkVideoStatus();
-    }
-  }, [videoId, currentMessage]);
+    startVideoPolling();
+  }, [videoId, isGenerating, currentMessage, messages.length]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
