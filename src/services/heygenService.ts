@@ -53,6 +53,11 @@ class HeyGenService {
           type: "color",
           value: "#ffffff"
         },
+        video_inputs: [
+          {
+            text: request.script
+          }
+        ],
         clips: [
           {
             avatar: {
@@ -60,10 +65,6 @@ class HeyGenService {
             },
             voice: {
               id: request.voiceId
-            },
-            script: {
-              type: "text",
-              input: request.script
             }
           }
         ]

@@ -35,6 +35,17 @@ Deno.serve(async (req) => {
     if (requestBody.caption === undefined) {
       requestBody.caption = false;
     }
+    
+    // Make sure video_inputs is properly formatted if text is passed
+    if (requestBody.video_inputs === undefined && requestBody.text) {
+      requestBody.video_inputs = [
+        {
+          text: requestBody.text
+        }
+      ];
+      // Remove the original text property as it's now in video_inputs
+      delete requestBody.text;
+    }
 
     const response = await fetch(url, {
       method: 'POST',
