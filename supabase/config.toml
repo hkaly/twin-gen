@@ -9,3 +9,6 @@ verify_jwt = true
 
 [functions.heygen-webhook]
 verify_jwt = false
+
+[functions.heygen-webhook-register]
+verify_jwt = false
