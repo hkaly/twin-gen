@@ -96,13 +96,14 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({
         error: data.error || "Error calling HeyGen API",
         status: response.status,
-        statusText: response.statusText
+        statusText: response.statusText,
+        details: data
       }), {
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json'
         },
-        status: 500
+        status: response.status || 500
       });
     }
 

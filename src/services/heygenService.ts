@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { Avatar, VideoRequest, VideoResponse } from "@/types/avatar";
 import { supabase } from "@/integrations/supabase/client";
@@ -83,13 +82,20 @@ class HeyGenService {
         throw error;
       }
 
+      if (data.error) {
+        console.error("Error from HeyGen API:", data.error);
+        const errorMessage = data.error.message || "Failed to generate video";
+        toast.error(errorMessage);
+        throw new Error(errorMessage);
+      }
+
       console.log("Response from HeyGen API:", data);
       
       // Return the video ID from the HeyGen response
       return data.data?.video_id || `video-${Date.now()}`;
     } catch (error) {
       console.error("Error generating video:", error);
-      toast.error("Failed to generate video. Please try again.");
+      toast.error("Failed to generate video. Please check your HeyGen API key.");
       throw error;
     }
   }
