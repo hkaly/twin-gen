@@ -16,7 +16,25 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Get the API key from environment variables
   const apiKey = Deno.env.get('heygen');
+  
+  if (!apiKey) {
+    console.error("API key 'heygen' not found in environment variables");
+    return new Response(
+      JSON.stringify({
+        error: "API key not configured. Please set the 'heygen' secret in your Supabase project."
+      }),
+      {
+        status: 500,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+  }
+  
   const url = 'https://api.heygen.com/v2/video/generate';
 
   try {
@@ -47,6 +65,8 @@ Deno.serve(async (req) => {
       delete requestBody.text;
     }
 
+    console.log("Using API key:", apiKey.substring(0, 5) + "..." + apiKey.substring(apiKey.length - 5));
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -59,6 +79,20 @@ Deno.serve(async (req) => {
 
     const data = await response.json();
     console.log("Response from HeyGen API:", JSON.stringify(data));
+    
+    if (!response.ok) {
+      return new Response(JSON.stringify({
+        error: data.error || "Error calling HeyGen API",
+        status: response.status,
+        statusText: response.statusText
+      }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        },
+        status: 500
+      });
+    }
 
     return new Response(JSON.stringify(data), {
       headers: {
