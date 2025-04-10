@@ -1,1 +1,5 @@
+
 project_id = "jkvceqitkmzmcrdsoeha"
+
+[functions.heygen]
+verify_jwt = true
