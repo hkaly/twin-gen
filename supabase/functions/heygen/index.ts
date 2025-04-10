@@ -22,6 +22,19 @@ Deno.serve(async (req) => {
   try {
     const requestBody = await req.json();
     console.log("Request to HeyGen API:", JSON.stringify(requestBody));
+    
+    // Ensure the request has proper dimension format if not already provided
+    if (!requestBody.dimension) {
+      requestBody.dimension = {
+        width: 1280,
+        height: 720
+      };
+    }
+    
+    // Add caption field if not already provided
+    if (requestBody.caption === undefined) {
+      requestBody.caption = false;
+    }
 
     const response = await fetch(url, {
       method: 'POST',

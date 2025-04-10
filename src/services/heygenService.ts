@@ -42,8 +42,13 @@ class HeyGenService {
       toast.info("Video generation started");
       console.log("Generating video with:", request);
       
-      // Prepare the payload for the HeyGen API
+      // Prepare the payload for the HeyGen API according to their format
       const payload = {
+        caption: false,
+        dimension: {
+          width: 1280,
+          height: 720
+        },
         background: {
           type: "color",
           value: "#ffffff"
@@ -78,7 +83,7 @@ class HeyGenService {
       console.log("Response from HeyGen API:", data);
       
       // Return the video ID from the HeyGen response
-      return data.data.video_id || `video-${Date.now()}`;
+      return data.data?.video_id || `video-${Date.now()}`;
     } catch (error) {
       console.error("Error generating video:", error);
       toast.error("Failed to generate video. Please try again.");
